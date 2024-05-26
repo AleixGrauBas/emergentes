@@ -1,0 +1,26 @@
+{
+  "name": "blogs",
+  "version": "1.0.0",
+  "description": "Ejemplo de Servicio de BLOGS",
+  "main": "server.js",
+  "scripts": {
+    "prestart": "npm install",
+    "start": "node server.js"
+  },
+  "keywords": [
+    "graphQL"
+  ],
+  "license": "Unlicense",
+  "private": true,
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "express-sse": "^0.5.3",
+    "graphql": "^16.8.1",
+    "graphql-http": "^1.22.0",
+    "graphql-sse": "^2.5.2",
+    "lodash": "^4.17.21",
+    "realm": "^12.6.0",
+    "ruru": "^2.0.0-beta.11"
+  }
+}

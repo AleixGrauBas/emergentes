@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<!-- TODO:
+     añadir en methods getInterest y addinterest
+    añadir en div app los botones e interfaz para añadirlo
+    -->
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+
+    <title>BLOGS</title>
+
+    <!-- Required Stylesheets -->
+    <link
+      type="text/css"
+      rel="stylesheet"
+      href="https://unpkg.com/bootstrap/dist/css/bootstrap.min.css"
+    />
+    <link
+      type="text/css"
+      rel="stylesheet"
+      href="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.css"
+    />
+
+    <!-- Required scripts -->
+    <script src="//cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.min.js"></script>
+    <script src="//unpkg.com/babel-polyfill@latest/dist/polyfill.min.js"></script>
+    <script src="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.js"></script>
+  </head>
+  <body>
+    <!-- Our application root element -->
+    <div id="app">
+      <b-container>
+        <b-jumbotron header="Interest" lead="Demo de agregacion de intereses">
+        </b-jumbotron>
+    
+        <b-form-group horizontal :label-cols="4" label="Dime tu nombre">
+          <b-form-input v-model.trim="name"></b-form-input>
+          <b-form-input v-model.trim="password" type="password" placeholder="Contraseña"></b-form-input>
+          <b-form-input v-model.trim="email" type="email" placeholder="Correo electrónico"></b-form-input>
+        </b-form-group>
+        
+    
+        <b-alert variant="success" :show="showAlert">
+          Bienvenido {{ name }}!
+          <b-button @click="addUserClick" size="sm">Crear Usuario</b-button>
+        </b-alert>        
+      
+        <!-- Dentro de la sección de formulario -->
+        <b-form-group horizontal :label-cols="4" label="Dime el interés al que te quieres añadir">
+          <!-- Desplegable de intereses -->
+          <b-form-select v-model="interestToAdd" :options="interests" placeholder="Selecciona un interés"></b-form-select>
+          <!-- Desplegable de usuarios -->
+          <b-form-select v-model="selectedUser" :options="users" placeholder="Selecciona un usuario"></b-form-select>
+          <!-- Botón para agregar interés al usuario -->
+          <b-button @click="addInterestToUserClick">Añadir Interés</b-button>
+        </b-form-group>
+
+        <!-- Agregar un formulario para añadir un nuevo interés -->
+        <b-form @submit.prevent="addInterest">
+          <b-form-group label="Nombre del interés">
+            <b-form-input v-model="newInterestName" required></b-form-input>
+          </b-form-group>
+          <b-button type="submit">Añadir Interés</b-button>
+        </b-form>
+
+        
+    
+        
+        <b-card v-if="blogId.length > 0">
+            
+          <p v-if="posts.length == 0"> Aún no hay mensajes</p>
+    
+            <b-table responsive :items="posts">
+              <template #cell(author)="data">
+                 {{ data.value.name }}
+              </template>
+            </b-table>
+    
+            <b-form-group>
+               <b-form-input v-model.trim="post" placeholder="Nuevo comentario" 
+                             @keyup.enter="addPost">
+               </b-form-input>
+    
+        </b-card>
+    
+    
+      </b-container>
+    </div>
+    
+    <!-- Start running your app -->
+    <script>
+      window.app  = new Vue({
+        el: '#app',
+        data: {
+          name:   '', //nombre de usuario (no se usa)
+          password: '',
+          email: '',
+          query:  '', //búsqueda
+          name: '',
+          interests: [],
+          blogId: '', //blog activado
+          blogs:  [], //blogs de la búsqueda
+          posts:  [], //posts del blog activado
+          post:   '',  //nuevo post
+          interestToAdd: '',
+          users: [],
+          selectedUser: '',
+          newInterestName: ''
+        },
+        computed: {
+          showAlert() {
+            return this.name.length > 2 ? true : false
+          }
+        },
+        methods: {
+          addInterest() {
+            // Verifica que el nombre del nuevo interés no esté vacío
+            if (this.newInterestName.trim() === '') {
+              alert('Por favor ingresa un nombre para el interés.');
+              return;
+            }
+            
+            // Realiza la llamada para agregar el nuevo interés utilizando el nombre proporcionado
+            fetch('/graphql', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                query: `
+                  mutation {
+                    addInterest(name: "${this.newInterestName}") {
+                      name
+                    }
+                  }
+                `
+              })
+            })
+            .then(response => response.json())
+            .then(data => {
+              // Muestra un mensaje de éxito y actualiza la lista de intereses
+              alert(`Interés "${this.newInterestName}" añadido exitosamente.`);
+              this.newInterestName = ''; // Restablece el campo de entrada
+              // Actualiza la lista de intereses (opcional)
+              this.getInterests();
+            })
+            .catch(error => {
+              console.error('Error al agregar el interés:', error);
+              alert('Error al agregar el interés. Por favor revisa la consola para más detalles.');
+            });
+          },
+          addInterestToUserClick() {
+            // Verifica que tanto el interés como el usuario estén seleccionados
+            if (this.interestToAdd && this.selectedUser) {
+                // Llama al método addInterestToUser del objeto window.app con el interés y el usuario seleccionados
+                window.app.addInterestToUser(this.selectedUser, this.interestToAdd);
+            } else {
+                // Muestra un mensaje de error si falta seleccionar el usuario o el interés
+                alert('Por favor selecciona un usuario y un interés.');
+            }
+          },
+
+          getUsers() {
+            // Consulta GraphQL para obtener la lista de usuarios y sus nombres
+            const gql = `query {
+              users {
+                name
+              }
+            }`;
+
+            // Realiza la consulta GraphQL
+            fetch('/graphql?query=' + encodeURIComponent(gql))
+              .then(response => response.json())
+              .then(data => {
+                // Almacena los nombres de usuario en la variable 'users'
+                this.users = data.data.users.map(user => user.name);
+              })
+              .catch(error => {
+                console.error('Error al obtener los usuarios:', error);
+              });
+          },
+          getInterests() {
+            // Consulta GraphQL para obtener los intereses disponibles
+            const gql = `query {
+              getInterests {
+                name
+              }
+            }`;
+
+            // Realiza la consulta GraphQL
+            fetch('/graphql?query=' + encodeURIComponent(gql))
+            .then(response => response.json())
+            .then(data => {
+              // Almacena los intereses en el array 'interests'
+              this.interests = data.data.getInterests.map(interest => interest.name);
+            })
+            .catch(error => {
+              console.error('Error al obtener los intereses:', error);
+            });
+          },
+          addUserClick() {
+              // Llama al método addUser del objeto window.app con los parámetros necesarios
+              window.app.addUser(this.name, this.password, this.email);
+          },
+          searchBlogs() {
+            var self = this
+            var gQL = `query{searchBlog(q:"${this.query}"){title creator{name}}}`
+            
+            fetch('/graphql?query=' + encodeURIComponent(gQL))
+            .then(function(r){return r.json()})
+            .then(function(json){
+              self.blogs = json.data.searchBlog
+            })
+            .catch(function(error){console.log(error)})
+          },
+          searchInterests() {
+            var self = this;
+            var gql = `query { getInterests(q: "${this.query}") { interestName } }`; // Consulta GraphQL para buscar intereses
+    
+            fetch('/graphql?query=' + encodeURIComponent(gql))
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(json) {
+                console.log(json);
+                self.interests = json.data.getInterest;
+            })
+            .catch(function(error) {
+                console.log(error);
+            });
+          },
+          
+          getPosts(blogId) {
+            var self = this
+            
+            this.blogId = blogId
+    
+            var gQL = `query{posts(blogId:"${this.blogId}"){title content author{name}}}`
+            console.log(gQL)
+            fetch('/graphql?query=' + encodeURIComponent(gQL))
+            .then(function(r){return r.json()})
+            .then(function(json){
+              self.posts = json.data.posts //TO BE COMPLETED : only title and content
+            })
+            .catch(function(error){console.log(error)})
+          },
+          addPost() {
+            //TO BE COMPLETED 
+          },
+          addUser(name, password, email) {
+          // Llama a la función addUser del controlador con los parámetros necesarios
+          fetch('/graphql', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                  query: `
+                      mutation {
+                          addUser(name: "${name}", passwd: "${password}", email: "${email}", interestNames: [])
+                          {
+                              name
+                              email
+                          }
+                      }
+                  `
+              })
+          })
+          .then(response => response.json())
+          .then(data => {
+              // Mostrar en consola que el usuario ha sido creado
+              console.log('Usuario creado:', data.data.addUser.name, 'Correo electrónico:', data.data.addUser.email);
+              // Actualiza la interfaz de usuario o realiza otras acciones necesarias
+
+              // Restablecer los campos a valores vacíos
+              this.name = '';
+              this.password = '';
+              this.email = '';
+
+              // Mostrar mensaje de usuario creado
+              alert('Usuario creado correctamente');
+          })
+          .catch(error => {
+              console.error('Error al agregar el usuario:', error);
+              // Maneja el error de manera adecuada
+          });
+          },
+          addInterestToUser(name, interestName) {
+              // Llama a la función addInterestToUser del controlador con el interés y el nombre del usuario proporcionados
+              fetch('/graphql', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                      query: `
+                          mutation {
+                              addInterestsToUser(userName: "${name}", interestNames: ["${interestName}"])
+                              {
+                                  name
+                              }
+                          }
+                      `
+                  })
+              })
+              .then(response => response.json())
+              .then(data => {
+                  console.log('Interés agregado al usuario correctamente:', data);
+                  // Actualiza la interfaz de usuario o realiza otras acciones necesarias
+              })
+              .catch(error => {
+                  console.error('Error al agregar el interés al usuario:', error);
+                  // Maneja el error de manera adecuada
+              });
+          }
+        },
+        mounted() {
+          var self = this
+          var ES = new EventSource('/news') //ruta API con notificaciones
+          
+          this.getInterests();
+          this.getUsers(); 
+
+          console.log('Creando listener de eventos de servidor...')
+    
+          ES.addEventListener('new-post', function(event){
+            var data = JSON.parse(JSON.parse(event.data)) 
+            //bytes to string -> string to json
+            if (data.blogId == self.blogId)
+                self.posts.push(data)
+          }, false)
+        }
+      })
+    </script>
+    
+    
+  </body>
+</html>
