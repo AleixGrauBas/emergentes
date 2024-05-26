@@ -35,5 +35,5 @@ app.use('/web',  express.static('public'))
 //Endpoint for SSE stream
 app.use('/news', sse.eventStream)
 
-app.listen(9000, () => console.log('Listening on 9000'))
+app.listen(8080, () => console.log('Listening on 8080'))
 
